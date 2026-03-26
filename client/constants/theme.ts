@@ -3,33 +3,33 @@ export const Colors = {
     textPrimary: "#1C1917",
     textSecondary: "#78716c",
     textMuted: "#9CA3AF",
-    primary: "#4F46E5", // Indigo-600 - 品牌主色，代表科技与智能
-    accent: "#8B5CF6", // Violet-500 - 辅助色，代表创造力
-    success: "#10B981", // Emerald-500
-    error: "#EF4444",
-    backgroundRoot: "#FAFAFA",
-    backgroundDefault: "#FFFFFF",
-    backgroundTertiary: "#F9FAFB", // 更浅的背景色，用于去线留白
+    primary: "#6C63FF", // 薰衣草紫 - 科技与智能
+    accent: "#896BFF", // 紫色渐变终点
+    success: "#00B894", // 翠绿色
+    error: "#FF6B6B",
+    backgroundRoot: "#F0F0F3", // 暖灰白 - 柔和卡片风
+    backgroundDefault: "#F0F0F3", // 卡片背景与根背景同色
+    backgroundTertiary: "#E8E8EB", // 凹陷面颜色
     buttonPrimaryText: "#FFFFFF",
-    tabIconSelected: "#4F46E5",
-    border: "#E5E7EB",
-    borderLight: "#F3F4F6",
+    tabIconSelected: "#6C63FF",
+    border: "#D1D9E6",
+    borderLight: "#E8E8EB",
   },
   dark: {
-    textPrimary: "#FAFAF9",
-    textSecondary: "#A8A29E",
-    textMuted: "#6F767E",
-    primary: "#818CF8", // Indigo-400 - 暗色模式品牌主色
-    accent: "#A78BFA", // Violet-400
-    success: "#34D399",
-    error: "#F87171",
-    backgroundRoot: "#09090B", // 更深的背景色
-    backgroundDefault: "#1C1C1E",
-    backgroundTertiary: "#1F1F22", // 暗色模式去线留白背景
-    buttonPrimaryText: "#09090B",
-    tabIconSelected: "#818CF8",
-    border: "#3F3F46",
-    borderLight: "#27272A",
+    textPrimary: "#2D3436",
+    textSecondary: "#636E72",
+    textMuted: "#B2BEC3",
+    primary: "#6C63FF", // 薰衣草紫
+    accent: "#896BFF",
+    success: "#00B894",
+    error: "#FF6B6B",
+    backgroundRoot: "#F0F0F3", // 统一使用暖灰白背景
+    backgroundDefault: "#F0F0F3",
+    backgroundTertiary: "#E8E8EB",
+    buttonPrimaryText: "#FFFFFF",
+    tabIconSelected: "#6C63FF",
+    border: "#D1D9E6",
+    borderLight: "#E8E8EB",
   },
 };
 
