@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: grading-api
+    env: node
+    region: singapore
+    plan: free
+    buildCommand: cd server && pnpm install && pnpm run build
+    startCommand: cd server && node dist/index.js
+    envVars:
+      - key: NODE_VERSION
+        value: 20
+      - key: PORT
+        value: 10000
