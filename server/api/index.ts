@@ -1,8 +1,8 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import express from 'express';
 import cors from 'cors';
-import gradingRoutes from './routes/grading';
-import uploadRoutes from './routes/upload';
+import gradingRoutes from '../src/routes/grading';
+import uploadRoutes from '../src/routes/upload';
 
 const app = express();
 
