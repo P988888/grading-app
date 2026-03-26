@@ -4,11 +4,6 @@
   "installCommand": "pnpm install",
   "framework": null,
   "regions": ["hkg1"],
-  "functions": {
-    "server/api/index.ts": {
-      "runtime": "nodejs24.x"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/:path*",
