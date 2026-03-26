@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
+import { uploadFile, gradeVideo, GradingResult } from '@/utils/api';
 import { createStyles } from './styles';
 
 export default function VideoScreen() {
@@ -16,7 +17,7 @@ export default function VideoScreen() {
   
   const [selectedVideo, setSelectedVideo] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<GradingResult | null>(null);
 
   const handlePickVideo = async () => {
     try {
@@ -50,44 +51,26 @@ export default function VideoScreen() {
 
     setIsProcessing(true);
     
-    // 模拟批改过程
-    setTimeout(() => {
-      setResult({
-        totalScore: 88,
-        scores: {
-          content: 36,
-          editing: 22,
-          cameraWork: 17,
-          duration: 13,
-        },
-        maxScores: {
-          content: 40,
-          editing: 25,
-          cameraWork: 20,
-          duration: 15,
-        },
-        strengths: [
-          '视频主题鲜明，叙事节奏把控得当',
-          '剪辑流畅，转场自然，配乐贴合氛围',
-          '镜头语言丰富，运用了多种景别变化',
-        ],
-        weaknesses: [
-          '部分镜头晃动明显，建议使用稳定器',
-          '片尾字幕滚动速度过快，不易阅读',
-        ],
-        suggestions: [
-          '增加封面吸引力设计，突出核心卖点',
-          '优化口播流畅度，可增加字幕辅助',
-          '适当加入互动引导，提升传播效果',
-        ],
-        platformScore: {
-          weibo: 82,
-          xiaohongshu: 90,
-          douyin: 85,
-        },
-      });
+    try {
+      // 上传视频到对象存储
+      const uploadResult = await uploadFile(
+        selectedVideo.uri,
+        selectedVideo.fileName || 'video.mp4',
+        selectedVideo.mimeType || 'video/mp4'
+      );
+      
+      // 调用批改 API
+      const gradingResult = await gradeVideo(
+        `视频文件：${selectedVideo.fileName || 'video.mp4'}`,
+        uploadResult.url
+      );
+      
+      setResult(gradingResult);
+    } catch (error) {
+      Alert.alert('错误', error instanceof Error ? error.message : '批改过程中发生错误');
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const handleReset = () => {
@@ -141,9 +124,13 @@ export default function VideoScreen() {
                 onPress={handleSubmit}
                 disabled={isProcessing}
               >
-                <ThemedText variant="bodyMedium" color={theme.buttonPrimaryText}>
-                  {isProcessing ? '批改中...' : '开始批改'}
-                </ThemedText>
+                {isProcessing ? (
+                  <ActivityIndicator color={theme.buttonPrimaryText} />
+                ) : (
+                  <ThemedText variant="bodyMedium" color={theme.buttonPrimaryText}>
+                    开始批改
+                  </ThemedText>
+                )}
               </TouchableOpacity>
             )}
           </ThemedView>
@@ -177,7 +164,7 @@ export default function VideoScreen() {
                       分项得分
                     </ThemedText>
                     {Object.entries(result.scores).map(([key, value]) => {
-                      const labels: any = {
+                      const labels: Record<string, string> = {
                         content: '内容主题',
                         editing: '剪辑节奏',
                         cameraWork: '镜头语言',
@@ -186,7 +173,7 @@ export default function VideoScreen() {
                       return (
                         <View key={key} style={styles.scoreRow}>
                           <ThemedText variant="body" color={theme.textSecondary}>
-                            {labels[key]}
+                            {labels[key] || key}
                           </ThemedText>
                           <ThemedText variant="bodyMedium" color={theme.textPrimary}>
                             {value} / {result.maxScores[key]}
@@ -200,37 +187,39 @@ export default function VideoScreen() {
             </View>
 
             {/* Platform Score */}
-            <View style={styles.cardOuter}>
-              <View style={styles.cardShadow}>
-                <View style={[styles.cardContent, { backgroundColor: theme.backgroundDefault }]}>
-                  <View style={styles.detailCard}>
-                    <ThemedText variant="title" color={theme.textPrimary} style={styles.detailTitle}>
-                      平台适配评分
-                    </ThemedText>
-                    <View style={styles.platformRow}>
-                      <View style={styles.platformItem}>
-                        <FontAwesome6 name="weibo" size={20} color="#FF6584" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.platformScore}>
-                          {result.platformScore.weibo}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.platformItem}>
-                        <FontAwesome6 name="book" size={20} color="#FF6584" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.platformScore}>
-                          {result.platformScore.xiaohongshu}
-                        </ThemedText>
-                      </View>
-                      <View style={styles.platformItem}>
-                        <FontAwesome6 name="music" size={20} color="#FF6584" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.platformScore}>
-                          {result.platformScore.douyin}
-                        </ThemedText>
+            {result.platformScore && (
+              <View style={styles.cardOuter}>
+                <View style={styles.cardShadow}>
+                  <View style={[styles.cardContent, { backgroundColor: theme.backgroundDefault }]}>
+                    <View style={styles.detailCard}>
+                      <ThemedText variant="title" color={theme.textPrimary} style={styles.detailTitle}>
+                        平台适配评分
+                      </ThemedText>
+                      <View style={styles.platformRow}>
+                        <View style={styles.platformItem}>
+                          <FontAwesome6 name="weibo" size={20} color="#FF6584" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.platformScore}>
+                            {result.platformScore.weibo}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.platformItem}>
+                          <FontAwesome6 name="book" size={20} color="#FF6584" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.platformScore}>
+                            {result.platformScore.xiaohongshu}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.platformItem}>
+                          <FontAwesome6 name="music" size={20} color="#FF6584" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.platformScore}>
+                            {result.platformScore.douyin}
+                          </ThemedText>
+                        </View>
                       </View>
                     </View>
                   </View>
                 </View>
               </View>
-            </View>
+            )}
 
             {/* Strengths */}
             <View style={styles.cardOuter}>
@@ -243,7 +232,7 @@ export default function VideoScreen() {
                         优点
                       </ThemedText>
                     </View>
-                    {result.strengths.map((item: string, index: number) => (
+                    {result.strengths.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={styles.bulletPoint}>
                           <FontAwesome6 name="check" size={10} color="#10B981" />
@@ -269,7 +258,7 @@ export default function VideoScreen() {
                         不足
                       </ThemedText>
                     </View>
-                    {result.weaknesses.map((item: string, index: number) => (
+                    {result.weaknesses.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={styles.bulletPoint}>
                           <FontAwesome6 name="xmark" size={10} color="#EF4444" />
@@ -295,7 +284,7 @@ export default function VideoScreen() {
                         优化建议
                       </ThemedText>
                     </View>
-                    {result.suggestions.map((item: string, index: number) => (
+                    {result.suggestions.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={[styles.suggestionNumber, { backgroundColor: '#FF658415' }]}>
                           <ThemedText variant="caption" color="#FF6584">{index + 1}</ThemedText>

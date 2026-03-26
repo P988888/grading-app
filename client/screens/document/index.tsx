@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, Platform } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
+import { uploadDocument, gradeDocument, GradingResult } from '@/utils/api';
 import { createStyles } from './styles';
 
 export default function DocumentScreen() {
@@ -16,12 +17,19 @@ export default function DocumentScreen() {
   
   const [selectedFile, setSelectedFile] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<GradingResult | null>(null);
 
   const handlePickDocument = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation'],
+        type: [
+          'application/pdf',
+          'application/msword',
+          'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+          'application/vnd.ms-powerpoint',
+          'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+          'text/plain',
+        ],
         copyToCacheDirectory: true,
       });
 
@@ -42,39 +50,19 @@ export default function DocumentScreen() {
 
     setIsProcessing(true);
     
-    // 模拟批改过程（实际应用中需要调用后端API）
-    setTimeout(() => {
-      setResult({
-        totalScore: 85,
-        scores: {
-          content: 28,
-          structure: 22,
-          creativity: 20,
-          technical: 15,
-        },
-        maxScores: {
-          content: 30,
-          structure: 25,
-          creativity: 25,
-          technical: 20,
-        },
-        strengths: [
-          '选题结合校园热点，数据图表清晰可视化',
-          '理论框架完整，引用文献规范',
-          '逻辑清晰，层次分明',
-        ],
-        weaknesses: [
-          'PPT文字排版冗长，缺乏封面页与目录页',
-          '数据案例稍显陈旧，建议补充近三年行业报告',
-        ],
-        suggestions: [
-          '精简文字信息，补充"短视频分镜"视觉样例',
-          '调整配色方案为新媒体运营行业主流色系',
-          '增加互动环节设计，提升课堂参与度',
-        ],
-      });
+    try {
+      // 上传文档并获取内容
+      const documentContent = await uploadDocument(selectedFile.uri, selectedFile.name);
+      
+      // 调用批改 API
+      const gradingResult = await gradeDocument(documentContent.content, selectedFile.name);
+      
+      setResult(gradingResult);
+    } catch (error) {
+      Alert.alert('错误', error instanceof Error ? error.message : '批改过程中发生错误');
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const handleReset = () => {
@@ -128,9 +116,13 @@ export default function DocumentScreen() {
                 onPress={handleSubmit}
                 disabled={isProcessing}
               >
-                <ThemedText variant="bodyMedium" color={theme.buttonPrimaryText}>
-                  {isProcessing ? '批改中...' : '开始批改'}
-                </ThemedText>
+                {isProcessing ? (
+                  <ActivityIndicator color={theme.buttonPrimaryText} />
+                ) : (
+                  <ThemedText variant="bodyMedium" color={theme.buttonPrimaryText}>
+                    开始批改
+                  </ThemedText>
+                )}
               </TouchableOpacity>
             )}
           </ThemedView>
@@ -164,7 +156,7 @@ export default function DocumentScreen() {
                       分项得分
                     </ThemedText>
                     {Object.entries(result.scores).map(([key, value]) => {
-                      const labels: any = {
+                      const labels: Record<string, string> = {
                         content: '内容完整度',
                         structure: '结构逻辑',
                         creativity: '创新性',
@@ -173,7 +165,7 @@ export default function DocumentScreen() {
                       return (
                         <View key={key} style={styles.scoreRow}>
                           <ThemedText variant="body" color={theme.textSecondary}>
-                            {labels[key]}
+                            {labels[key] || key}
                           </ThemedText>
                           <ThemedText variant="bodyMedium" color={theme.textPrimary}>
                             {value} / {result.maxScores[key]}
@@ -197,7 +189,7 @@ export default function DocumentScreen() {
                         优点
                       </ThemedText>
                     </View>
-                    {result.strengths.map((item: string, index: number) => (
+                    {result.strengths.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={styles.bulletPoint}>
                           <FontAwesome6 name="check" size={10} color="#10B981" />
@@ -223,7 +215,7 @@ export default function DocumentScreen() {
                         不足
                       </ThemedText>
                     </View>
-                    {result.weaknesses.map((item: string, index: number) => (
+                    {result.weaknesses.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={styles.bulletPoint}>
                           <FontAwesome6 name="xmark" size={10} color="#EF4444" />
@@ -249,7 +241,7 @@ export default function DocumentScreen() {
                         优化建议
                       </ThemedText>
                     </View>
-                    {result.suggestions.map((item: string, index: number) => (
+                    {result.suggestions.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={[styles.suggestionNumber, { backgroundColor: `${theme.primary}15` }]}>
                           <ThemedText variant="caption" color={theme.primary}>{index + 1}</ThemedText>

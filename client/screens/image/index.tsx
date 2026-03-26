@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, ScrollView, TouchableOpacity, Alert, Image } from 'react-native';
+import { View, ScrollView, TouchableOpacity, Alert, Image, ActivityIndicator } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { useTheme } from '@/hooks/useTheme';
 import { Screen } from '@/components/Screen';
@@ -7,6 +7,7 @@ import { ThemedText } from '@/components/ThemedText';
 import { ThemedView } from '@/components/ThemedView';
 import { FontAwesome6 } from '@expo/vector-icons';
 import { useSafeRouter } from '@/hooks/useSafeRouter';
+import { uploadFile, gradeImage, GradingResult } from '@/utils/api';
 import { createStyles } from './styles';
 
 export default function ImageScreen() {
@@ -16,7 +17,7 @@ export default function ImageScreen() {
   
   const [selectedImage, setSelectedImage] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [result, setResult] = useState<GradingResult | null>(null);
 
   const handlePickImage = async () => {
     try {
@@ -50,43 +51,26 @@ export default function ImageScreen() {
 
     setIsProcessing(true);
     
-    // 模拟批改过程
-    setTimeout(() => {
-      setResult({
-        totalScore: 82,
-        scores: {
-          content: 25,
-          visual: 26,
-          spread: 31,
-        },
-        maxScores: {
-          content: 30,
-          visual: 30,
-          spread: 40,
-        },
-        strengths: [
-          '图文内容点题，主题表达清晰',
-          '视觉设计有层次感，色彩搭配和谐',
-          '文案语言生动，符合新媒体传播特点',
-        ],
-        weaknesses: [
-          '标题略显平淡，建议加入更吸引眼球的元素',
-          '话题标签不够精准，覆盖面有限',
-        ],
-        suggestions: [
-          '优化标题：可使用"震惊体"或"数字法"提升点击率',
-          '添加 3-5 个热门话题标签，扩大传播范围',
-          '适当增加互动引导，如"你同意吗？评论区见"',
-        ],
-        interactionScore: {
-          views: 8500,
-          likes: 680,
-          comments: 45,
-          shares: 120,
-        },
-      });
+    try {
+      // 上传图片到对象存储
+      const uploadResult = await uploadFile(
+        selectedImage.uri,
+        selectedImage.fileName || 'image.jpg',
+        selectedImage.mimeType || 'image/jpeg'
+      );
+      
+      // 调用批改 API
+      const gradingResult = await gradeImage(
+        `图片文件：${selectedImage.fileName || 'image.jpg'}`,
+        uploadResult.url
+      );
+      
+      setResult(gradingResult);
+    } catch (error) {
+      Alert.alert('错误', error instanceof Error ? error.message : '批改过程中发生错误');
+    } finally {
       setIsProcessing(false);
-    }, 2000);
+    }
   };
 
   const handleReset = () => {
@@ -142,9 +126,13 @@ export default function ImageScreen() {
                 onPress={handleSubmit}
                 disabled={isProcessing}
               >
-                <ThemedText variant="bodyMedium" color={theme.buttonPrimaryText}>
-                  {isProcessing ? '批改中...' : '开始批改'}
-                </ThemedText>
+                {isProcessing ? (
+                  <ActivityIndicator color={theme.buttonPrimaryText} />
+                ) : (
+                  <ThemedText variant="bodyMedium" color={theme.buttonPrimaryText}>
+                    开始批改
+                  </ThemedText>
+                )}
               </TouchableOpacity>
             )}
           </ThemedView>
@@ -178,7 +166,7 @@ export default function ImageScreen() {
                       分项得分
                     </ThemedText>
                     {Object.entries(result.scores).map(([key, value]) => {
-                      const labels: any = {
+                      const labels: Record<string, string> = {
                         content: '内容点题度',
                         visual: '视觉冲击力',
                         spread: '传播潜力',
@@ -186,7 +174,7 @@ export default function ImageScreen() {
                       return (
                         <View key={key} style={styles.scoreRow}>
                           <ThemedText variant="body" color={theme.textSecondary}>
-                            {labels[key]}
+                            {labels[key] || key}
                           </ThemedText>
                           <ThemedText variant="bodyMedium" color={theme.textPrimary}>
                             {value} / {result.maxScores[key]}
@@ -200,47 +188,49 @@ export default function ImageScreen() {
             </View>
 
             {/* Interaction Score */}
-            <View style={styles.cardOuter}>
-              <View style={styles.cardShadow}>
-                <View style={[styles.cardContent, { backgroundColor: theme.backgroundDefault }]}>
-                  <View style={styles.detailCard}>
-                    <ThemedText variant="title" color={theme.textPrimary} style={styles.detailTitle}>
-                      预估传播数据
-                    </ThemedText>
-                    <View style={styles.interactionRow}>
-                      <View style={styles.interactionItem}>
-                        <FontAwesome6 name="eye" size={20} color="#00B894" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
-                          {result.interactionScore.views.toLocaleString()}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={theme.textMuted}>浏览</ThemedText>
-                      </View>
-                      <View style={styles.interactionItem}>
-                        <FontAwesome6 name="heart" size={20} color="#00B894" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
-                          {result.interactionScore.likes}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={theme.textMuted}>点赞</ThemedText>
-                      </View>
-                      <View style={styles.interactionItem}>
-                        <FontAwesome6 name="comment" size={20} color="#00B894" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
-                          {result.interactionScore.comments}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={theme.textMuted}>评论</ThemedText>
-                      </View>
-                      <View style={styles.interactionItem}>
-                        <FontAwesome6 name="share" size={20} color="#00B894" />
-                        <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
-                          {result.interactionScore.shares}
-                        </ThemedText>
-                        <ThemedText variant="caption" color={theme.textMuted}>分享</ThemedText>
+            {result.interactionScore && (
+              <View style={styles.cardOuter}>
+                <View style={styles.cardShadow}>
+                  <View style={[styles.cardContent, { backgroundColor: theme.backgroundDefault }]}>
+                    <View style={styles.detailCard}>
+                      <ThemedText variant="title" color={theme.textPrimary} style={styles.detailTitle}>
+                        预估传播数据
+                      </ThemedText>
+                      <View style={styles.interactionRow}>
+                        <View style={styles.interactionItem}>
+                          <FontAwesome6 name="eye" size={20} color="#00B894" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
+                            {result.interactionScore.views.toLocaleString()}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={theme.textMuted}>浏览</ThemedText>
+                        </View>
+                        <View style={styles.interactionItem}>
+                          <FontAwesome6 name="heart" size={20} color="#00B894" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
+                            {result.interactionScore.likes}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={theme.textMuted}>点赞</ThemedText>
+                        </View>
+                        <View style={styles.interactionItem}>
+                          <FontAwesome6 name="comment" size={20} color="#00B894" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
+                            {result.interactionScore.comments}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={theme.textMuted}>评论</ThemedText>
+                        </View>
+                        <View style={styles.interactionItem}>
+                          <FontAwesome6 name="share" size={20} color="#00B894" />
+                          <ThemedText variant="body" color={theme.textPrimary} style={styles.interactionValue}>
+                            {result.interactionScore.shares}
+                          </ThemedText>
+                          <ThemedText variant="caption" color={theme.textMuted}>分享</ThemedText>
+                        </View>
                       </View>
                     </View>
                   </View>
                 </View>
               </View>
-            </View>
+            )}
 
             {/* Strengths */}
             <View style={styles.cardOuter}>
@@ -253,7 +243,7 @@ export default function ImageScreen() {
                         优点
                       </ThemedText>
                     </View>
-                    {result.strengths.map((item: string, index: number) => (
+                    {result.strengths.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={styles.bulletPoint}>
                           <FontAwesome6 name="check" size={10} color="#10B981" />
@@ -279,7 +269,7 @@ export default function ImageScreen() {
                         不足
                       </ThemedText>
                     </View>
-                    {result.weaknesses.map((item: string, index: number) => (
+                    {result.weaknesses.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={styles.bulletPoint}>
                           <FontAwesome6 name="xmark" size={10} color="#EF4444" />
@@ -305,7 +295,7 @@ export default function ImageScreen() {
                         优化建议
                       </ThemedText>
                     </View>
-                    {result.suggestions.map((item: string, index: number) => (
+                    {result.suggestions.map((item, index) => (
                       <View key={index} style={styles.commentItem}>
                         <View style={[styles.suggestionNumber, { backgroundColor: '#00B89415' }]}>
                           <ThemedText variant="caption" color="#00B894">{index + 1}</ThemedText>
