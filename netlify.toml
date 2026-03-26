@@ -1,6 +1,9 @@
 [build]
   publish = "client/dist"
-  command = "cd client && npx expo export --platform web"
+  command = "pnpm install && cd client && npx expo export --platform web"
+
+[build.environment]
+  NODE_VERSION = "20"
 
 [[redirects]]
   from = "/*"

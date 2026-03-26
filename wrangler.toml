@@ -1,0 +1,10 @@
+# Cloudflare Pages 配置
+name = "grading-app"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "client/dist"
+
+[build]
+command = "pnpm install && cd client && npx expo export --platform web"
+
+[build.environment]
+NODE_VERSION = "20"
