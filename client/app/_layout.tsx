@@ -27,6 +27,9 @@ export default function RootLayout() {
             headerShown: false
           }}>
             <Stack.Screen name="index" options={{ title: "" }} />
+            <Stack.Screen name="document" options={{ title: "文档批改" }} />
+            <Stack.Screen name="video" options={{ title: "视频批改" }} />
+            <Stack.Screen name="image" options={{ title: "图片批改" }} />
           </Stack>
           <Toast />
         </GestureHandlerRootView>
